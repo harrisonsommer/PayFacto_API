@@ -82,7 +82,7 @@
             try {
                 // Call your Netlify function
                 // Note: Netlify functions are always at /.netlify/functions/[filename]
-                const response = await fetch('/.netlify/functions/get-sigma-url?mode=link_sharing');
+                const response = await fetch('/.netlify/functions/get-sigma-url');
                 
                 if (!response.ok) throw new Error('Failed to fetch signed URL');
                 
