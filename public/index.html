@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sigma Embed Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            background-color: #f4f7f9;
+            margin: 0;
+            height: 100vh;
+        }
+        .controls {
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+        }
+        #status {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .iframe-container {
+            width: 100%;
+            max-width: 1200px;
+            flex-grow: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h1>Sigma Embed Explorer</h1>
+        <button id="loadBtn">Load Sigma Dashboard</button>
+        <div id="status">Click the button to generate a signed URL</div>
+    </div>
+
+    <div class="iframe-container">
+        <iframe id="sigmaFrame" title="Sigma Dashboard"></iframe>
+    </div>
+
+    <script>
+        const loadBtn = document.getElementById('loadBtn');
+        const status = document.getElementById('status');
+        const sigmaFrame = document.getElementById('sigmaFrame');
+
+        loadBtn.addEventListener('click', async () => {
+            // Update UI
+            loadBtn.disabled = true;
+            status.textContent = 'Generating signed URL...';
+            
+            try {
+                // Call your Netlify function
+                // Note: Netlify functions are always at /.netlify/functions/[filename]
+                const response = await fetch('/.netlify/functions/get-sigma-url?mode=link_sharing');
+                
+                if (!response.ok) throw new Error('Failed to fetch signed URL');
+                
+                const data = await response.json();
+
+                // Set the iframe source to the signed URL
+                if (data.embedUrl) {
+                    sigmaFrame.src = data.embedUrl;
+                    status.textContent = 'Dashboard loaded successfully!';
+                } else {
+                    throw new Error('No URL returned from server');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                status.textContent = 'Error: ' + error.message;
+                status.style.color = 'red';
+            } finally {
+                loadBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
