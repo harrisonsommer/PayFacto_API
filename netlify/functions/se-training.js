@@ -59,7 +59,9 @@ exports.handler = async (event) => {
         // --- POST Logic ---
         if (method === "POST") {
             const { action, user, text } = body;
-
+            console.log("Action: ", action);
+            console.log("User: ", user);
+            console.log("Text: ", text);
             if (action === "ask_question") {
                 const newQuestion = {
                     id: trainingData.questions.length + 1,
