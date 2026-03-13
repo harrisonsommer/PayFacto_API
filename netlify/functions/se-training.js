@@ -1,7 +1,7 @@
 const querystring = require("querystring");
 const { getStore } = require("@netlify/blobs");
 // 1. Initialize Blobs Stores
-const questionStore = getStore("sigma-training-questions");
+const questionStore = getStore("sigma-training-questions", "a6a3c325-6cd2-4dc2-8dc1-a84bd06d7320", "nfp_c4Mu2KQkMG6QTXbhsxEf4BZ1ruM6FUvk4b09");
 const statsStore = getStore("sigma-training-stats");
 
 exports.handler = async (event) => {
