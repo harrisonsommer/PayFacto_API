@@ -1,18 +1,11 @@
 const querystring = require("querystring");
-
-// In-memory store (resets when the function "goes cold")
-let trainingData = {
-    progress: {
-        modules_completed: 0,
-        last_completed_by: "None",
-        history: []
-    },
-    questions: [
-        { id: 1, user: "Example User", text: "How do I handle API timeouts in Sigma?", timestamp: new Date().toISOString() }
-    ]
-};
+const { getStore } = require("@netlify/blobs");
 
 exports.handler = async (event) => {
+    // 1. Initialize Blobs Stores
+    const questionStore = getStore("sigma-training-questions");
+    const statsStore = getStore("sigma-training-stats");
+
     const method = event.httpMethod;
     const params = event.queryStringParameters || {};
     const headers = {
@@ -24,56 +17,81 @@ exports.handler = async (event) => {
 
     if (method === "OPTIONS") return { statusCode: 200, headers, body: "" };
 
-    // --- LOGGING THE REQUEST ---
-    // This will show up in your Netlify Function Logs
     console.log(`[${new Date().toISOString()}] Incoming ${method} request`);
-    if (method === "POST") {
-        console.log("Headers:", JSON.stringify(event.headers));
-        console.log("Raw Body:", event.body);
-    }
 
     try {
         let body = {};
         if (method === "POST" && event.body) {
             const contentType = event.headers["content-type"] || "";
-            
-            // Handle JSON vs Form-Data
             if (contentType.includes("application/json")) {
                 body = JSON.parse(event.body);
             } else if (contentType.includes("application/x-www-form-urlencoded")) {
                 body = querystring.parse(event.body);
             }
-            
             console.log("Parsed Body Object:", body);
         }
 
         // --- GET Logic ---
         if (method === "GET") {
             const step = params.step || "intro";
+
             if (step === "questions") {
-                return { statusCode: 200, headers, body: JSON.stringify(trainingData.questions) };
+                // Fetch all questions from Blobs
+                const list = await questionStore.list();
+                const questions = await Promise.all(
+                    list.blobs.map(async (b) => JSON.parse(await questionStore.get(b.key)))
+                );
+                // Sort by timestamp so the order stays consistent
+                questions.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                return { statusCode: 200, headers, body: JSON.stringify(questions) };
             }
+
+            if (step === "progress") {
+                // Fetch stats from Blobs or return default
+                const stats = await statsStore.get("current_stats", { type: "json" }) || {
+                    modules_completed: 0,
+                    last_completed_by: "None"
+                };
+                return { statusCode: 200, headers, body: JSON.stringify(stats) };
+            }
+
             return { statusCode: 200, headers, body: JSON.stringify({ snippet: `Content for ${step}` }) };
         }
 
         // --- POST Logic ---
         if (method === "POST") {
-            const { action, user, text } = body;
-            console.log("Action: ", action);
-            console.log("User: ", user);
-            console.log("Text: ", text);
+            const { action, user, text, module_id } = body;
+
             if (action === "ask_question") {
+                const questionId = `q_${Date.now()}`; // Unique key for Blobs
                 const newQuestion = {
-                    id: trainingData.questions.length + 1,
+                    id: questionId,
                     user: user || "Anonymous SE",
                     text: text || "No text",
                     timestamp: new Date().toISOString()
                 };
-                trainingData.questions.push(newQuestion);
-                console.log("New question added to internal store.");
+                
+                // Save to Blobs
+                await questionStore.set(questionId, JSON.stringify(newQuestion));
+                console.log("Question saved to Netlify Blobs.");
 
                 return { statusCode: 200, headers, body: JSON.stringify({ message: "Success", question: newQuestion }) };
             }
+
+            if (action === "complete_module") {
+                // Update persistent stats
+                const stats = await statsStore.get("current_stats", { type: "json" }) || {
+                    modules_completed: 0,
+                    last_completed_by: "None"
+                };
+
+                stats.modules_completed += 1;
+                stats.last_completed_by = user || "Anonymous";
+                
+                await statsStore.setJSON("current_stats", stats);
+                return { statusCode: 200, headers, body: JSON.stringify({ message: "Progress updated!", stats }) };
+            }
+
             return { statusCode: 400, headers, body: JSON.stringify({ error: "Action not recognized" }) };
         }
 
