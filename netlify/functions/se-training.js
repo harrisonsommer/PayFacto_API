@@ -3,8 +3,10 @@ const { getStore } = require("@netlify/blobs");
 
 exports.handler = async (event) => {
     // 1. Initialize Blobs Stores
-    const questionStore = getStore("sigma-training-questions", "a6a3c325-6cd2-4dc2-8dc1-a84bd06d7320", "nfp_c4Mu2KQkMG6QTXbhsxEf4BZ1ruM6FUvk4b09");
-    const statsStore = getStore("sigma-training-stats");
+    const questionStore = getStore({
+        name: "sigma-training-questions", 
+        siteID: "a6a3c325-6cd2-4dc2-8dc1-a84bd06d7320", 
+        token: "nfp_c4Mu2KQkMG6QTXbhsxEf4BZ1ruM6FUvk4b09"});
 
     const method = event.httpMethod;
     const params = event.queryStringParameters || {};
@@ -44,15 +46,6 @@ exports.handler = async (event) => {
                 // Sort by timestamp so the order stays consistent
                 questions.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
                 return { statusCode: 200, headers, body: JSON.stringify(questions) };
-            }
-
-            if (step === "progress") {
-                // Fetch stats from Blobs or return default
-                const stats = await statsStore.get("current_stats", { type: "json" }) || {
-                    modules_completed: 0,
-                    last_completed_by: "None"
-                };
-                return { statusCode: 200, headers, body: JSON.stringify(stats) };
             }
 
             return { statusCode: 200, headers, body: JSON.stringify({ snippet: `Content for ${step}` }) };
