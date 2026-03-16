@@ -3,7 +3,11 @@ const { getStore } = require("@netlify/blobs");
 
 exports.handler = async (event) => {
     // Standard initialization (Credentials are handled by Netlify automatically once enabled)
-    const questionStore = getStore("sigma-training-questions");
+    const questionStore = getStore({
+        name: "sigma-training-questions", 
+        siteID: "a6a3c325-6cd2-4dc2-8dc1-a84bd06d7320", 
+        token: "nfp_c4Mu2KQkMG6QTXbhsxEf4BZ1ruM6FUvk4b09"});
+
 
     const method = event.httpMethod;
     const params = event.queryStringParameters || {};
